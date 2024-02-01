@@ -1,0 +1,22 @@
+﻿
+Microsoft Visual Studio Solution File, Format Version 12.00
+# Visual Studio Version 17
+VisualStudioVersion = 17.8.34322.80
+MinimumVisualStudioVersion = 10.0.40219.1
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "OreLiDAR", "OreLiDAR.csproj", "{1C49A953-53A8-4D19-8C47-C5CC33559A9A}"
+EndProject
+Global
+	GlobalSection(SolutionConfigurationPlatforms) = preSolution
+		Debug|x64 = Debug|x64
+	EndGlobalSection
+	GlobalSection(ProjectConfigurationPlatforms) = postSolution
+		{1C49A953-53A8-4D19-8C47-C5CC33559A9A}.Debug|x64.ActiveCfg = Debug|x64
+		{1C49A953-53A8-4D19-8C47-C5CC33559A9A}.Debug|x64.Build.0 = Debug|x64
+	EndGlobalSection
+	GlobalSection(SolutionProperties) = preSolution
+		HideSolutionNode = FALSE
+	EndGlobalSection
+	GlobalSection(ExtensibilityGlobals) = postSolution
+		SolutionGuid = {E739ED12-ED33-4923-BD56-7785C6646FF3}
+	EndGlobalSection
+EndGlobal
