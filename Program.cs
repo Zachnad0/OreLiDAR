@@ -23,20 +23,27 @@ namespace IngameScript
 {
 	partial class Program : MyGridProgram
 	{
-		// COPY FROM HERE ================================================================================
-
 		// USER CUSTOMIZABLE SETTINGS START >>>
-		private const string ORE_BLACKLIST = "Stone"; // Comma seperated values with capitalized first letters. Default = "Stone"
+		// Quick setup:
+		// 1)	Group as many square LCDs, and ONE ore detector, with the name "ORELIDAR".
+		// 2)	Click 'Check Code', 'Ok', and 'Recompile'.
+		// 3)	When the LCDs are no longer printing, you may run the PB with the argument "SCAN".
+		// 4)	Enjoy lag, then wait to see your result get printed out on each LCD one by one.
+		// From then on, as long as no LCDs are printing, you can run with "SCAN" to make new scans.
 
-		private const bool DEPTH_SHADING = false;
+		private const string ORE_BLACKLIST = "Stone"; // The scan will bypass all ores in this list. "Anything" seperated values with capitalized first letters. Default = "Stone". Example = "Iron,Silicon;IceGold"
+
+		private const bool
+			DEPTH_SHADING = false, // True means darker shades are for further away (best with large blacklist). False for pure ore color at any distance (best for small blacklist). Default = false.
+			HALF_LAG_MODE = false; // True to spend double time scanning, but experience half as much lag (best for servers). Leave at false if you'd rather wait a shorter, albeit laggier, time for scans (best for singleplayer/small coop sessions). Also determines LCD print speed. Default = false. !!Affects lag!!
 
 		private const uint
-			SCAN_RES = 100,
-			CAST_DIST = 200,
-			CAST_ANGLE_MAX = 90;
+			SCAN_RES = 100, // Resolution of scan in pixels. Represents both width and height. I recommend keeping this no more than 300. Default = 100. !!Affects lag!!
+			CAST_DIST = 200, // Max distance of scan from ore detector in meters. Using depth shading at long ranges is not recommended. Default = 200. !!Affects lag!!
+			CAST_ANGLE_MAX = 45; // 1/2 of the FOV in degrees (kinda) of the scan. At longer ranges, I recommend a smaller FOV for a more concentrated scan (<20). Very close ranges best have it wide (>90).
 
-		private static readonly Color
-			BlankColor = Color.Black,
+		private static readonly Color // Here you can set your own colors for each ore.
+			BlankColor = Color.Black, // Blank represents a cast that hit no non-blacklisted ores.
 			CobaltColor = Color.Blue,
 			GoldColor = Color.Yellow,
 			IceColor = Color.LightBlue,
@@ -50,7 +57,8 @@ namespace IngameScript
 			UraniumColor = Color.LightGreen;
 
 		// USER CUSTOMIZABLE SETTINGS END <<<
-		private OreType[][] _currScanningOreTypeMap, _storedOreTypeMap;
+
+		private OreType[][] _currScanningOreTypeMap, _storedOreTypeMap; // Type maps
 		private float[][] _currScanningMatrix, _storedScanMatrix; // Depth maps
 		private ProgramMode _currentProgMode = ProgramMode.Idle;
 		private IEnumerator<bool> _currScanSequence;
@@ -141,7 +149,6 @@ namespace IngameScript
 		//	Storage = MatrixSerialization<float>.Serialize(_storedScanMatrix);
 		//}
 
-		// Called by updater OR terminal (w/ argument for begin)
 		public void Main(string argument)
 		{
 			if (!_setupValid)
@@ -205,11 +212,13 @@ namespace IngameScript
 
 		private IEnumerator<bool> ScanSequence()
 		{
-			for (int y = 0; y < SCAN_RES; y++)
+			uint rowsPerUpdate = HALF_LAG_MODE ? 1000 / SCAN_RES : 2000 / SCAN_RES;
+
+			for (uint y = 0; y < SCAN_RES; y++)
 			{
 				float currVertAngle = Remap(y, 0, SCAN_RES - 1, -CAST_ANGLE_MAX, CAST_ANGLE_MAX);
 
-				for (int x = 0; x < SCAN_RES; x++)
+				for (uint x = 0; x < SCAN_RES; x++)
 				{
 					// Input destination position using angle, curr pos, and the local orientation
 					float currHorizAngle = Remap(x, 0, SCAN_RES - 1, -CAST_ANGLE_MAX, CAST_ANGLE_MAX);
@@ -227,11 +236,12 @@ namespace IngameScript
 					else // Otherwise store info
 					{
 						_currScanningMatrix[x][y] = (float)Vector3D.Distance(result.HitPosition ?? OreDetector.GetPosition(), currPos) / CAST_DIST;
-						_currScanningOreTypeMap[x][y] = (OreType)Enum.Parse(typeof(OreType), result.Name);
+						OreType ot;
+						_currScanningOreTypeMap[x][y] = Enum.TryParse(result.Name, out ot) ? ot : OreType.Null;
 					}
 				}
 
-				if (y % 20 == 0) // Yield frequency 
+				if (y % rowsPerUpdate == 0) // Yield frequency 
 				{
 					Echo($"Scanning progress: {y}/{SCAN_RES}");
 					yield return false;
@@ -244,9 +254,11 @@ namespace IngameScript
 		{
 			lcd.WriteText("");
 			string outputPrint = "";
-			for (int y = 0; y < SCAN_RES; y++)
+			uint rowsPerUpdate = HALF_LAG_MODE ? 1000 / SCAN_RES : 2000 / SCAN_RES;
+
+			for (uint y = 0; y < SCAN_RES; y++)
 			{
-				for (int x = 0; x < SCAN_RES; x++)
+				for (uint x = 0; x < SCAN_RES; x++)
 				{
 					float depthPercent = _storedScanMatrix[x][y];
 					Color pixelColor = _oreColorCodingMap[_storedOreTypeMap[x][y]];
@@ -254,7 +266,7 @@ namespace IngameScript
 				}
 				outputPrint += "\n";
 
-				if (y % 20 == 0)
+				if (y % rowsPerUpdate == 0)
 				{
 					lcd.WriteText(outputPrint);
 					yield return false;
@@ -268,13 +280,15 @@ namespace IngameScript
 		{
 			string output = "";
 			Random rand = new Random();
-			for (int y = 0; y < SCAN_RES; y++)
+			uint rowsPerUpdate = HALF_LAG_MODE ? 1000 / SCAN_RES : 2000 / SCAN_RES;
+
+			for (uint y = 0; y < SCAN_RES; y++)
 			{
-				for (int x = 0; x < SCAN_RES; x++)
+				for (uint x = 0; x < SCAN_RES; x++)
 					output += ColorToChar(new Vector3(rand.Next(1, 256), rand.Next(1, 256), rand.Next(1, 256)));
 				output += "\n";
 
-				if (y % 10 == 0)
+				if (y % rowsPerUpdate == 0)
 				{
 					lcd.WriteText(output);
 					yield return false;
@@ -343,7 +357,5 @@ namespace IngameScript
 		//		return outMatrix;
 		//	}
 		//}
-
-		// COPY TO HERE ======================================================================================
 	}
 }
